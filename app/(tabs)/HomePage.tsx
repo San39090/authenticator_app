@@ -19,7 +19,7 @@ const HomePage = () => {
     const [showScanner, setShowScanner] = useState(false);
     const [hasPermission, setHasPermission] = useState(false);
     const [scanned, setScanned] = useState(false);
-    const BASEURL = "http://10.76.238.54:8080";
+    const BASEURL = "https://authenticator-backend-h4al.onrender.com";
     const [timer, setTimer] = useState(30);
     const [otpList, setOtpList] = useState<OtpAccount[]>([]);
 

@@ -17,7 +17,7 @@ import {
 
 const IndexPage = () => {
     const route = useRouter();
-    const BASEURL = "http://10.76.238.54:8080";
+    const BASEURL = "https://authenticator-backend-h4al.onrender.com";
     const [name, setName] = useState("");
     const [password, setPassword] = useState("");
     const [register,setRegister] = useState(false);
