@@ -1,9 +1,17 @@
+import { Camera, CameraView } from "expo-camera";
+import { generate, generateSync } from 'otplib';
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, ToastAndroid, TouchableOpacity, View } from "react-native";
 import Feather from "react-native-vector-icons/Feather";
 import FontAwesome from "react-native-vector-icons/FontAwesome";
-import { CameraView, Camera } from "expo-camera";
-import {authenticator} from "otplib";
+
+interface OtpAccount {
+    id: String,
+    issuer: String,
+    secret: String,
+    code: String,
+    account: String
+}
 
 const HomePage = () => {
     const [codes, setCodes] = useState("");
@@ -11,27 +19,9 @@ const HomePage = () => {
     const [showScanner, setShowScanner] = useState(false);
     const [hasPermission, setHasPermission] = useState(false);
     const [scanned, setScanned] = useState(false);
-    const BASEURL = "http://localhost:8080";
+    const BASEURL = "http://10.76.238.54:8080";
     const [timer, setTimer] = useState(30);
-    const [otpList,setOtpList] = useState([]);
-
-    const sampleData = [
-        {
-            id: 0,
-            code: 123456,
-            name: "Stripe"
-        },
-        {
-            id: 1,
-            code: 234567,
-            name: "Microsoft"
-        },
-        {
-            id: 2,
-            code: 345678,
-            name: "Google"
-        }
-    ]
+    const [otpList, setOtpList] = useState<OtpAccount[]>([]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -39,11 +29,13 @@ const HomePage = () => {
             const remaining = 30 - (seconds % 30);
             setTimer(remaining);
 
-            if(remaining === 30){
-                setOtpList((prev:any) => 
-                    prev.map((item:any) => ({
+            if (remaining === 30) {
+                setOtpList((prev: any) =>
+                    prev.map((item: any) => ({
                         ...item,
-                        code:authenticator.generate(item.secret)
+                        code: generateSync({
+                            secret: item.secret
+                        })
                     }))
                 )
             }
@@ -56,15 +48,67 @@ const HomePage = () => {
         setHasPermission(status === "granted")
     }
 
-    const handleBarCodeScanned = ({ data }: any) => {
-        setShowScanner(false);
-        setScanned(true);
-        ToastAndroid.show("QR scanned", ToastAndroid.SHORT);
-        const parsed = parseOTP(data);
-        const code = authenticator.generate(parsed.secret);
-        setOtpList((prev:any)=>[...prev,code]);
-        // saveToCloud(parsed);
-        console.log("Scanned Data:", parsed);
+    useEffect(()=>{
+        fetchAllSecrets();
+    },[]);
+
+    const fetchAllSecrets = async () => {
+        try {
+            const res = await fetch(`${BASEURL}/get/secrets`);
+            if (res.ok) {
+                const result = await res.json();
+                setOtpList(result);
+            }
+            else {
+                const result = await res.json();
+                ToastAndroid.show(result.message, ToastAndroid.SHORT);
+            }
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
+    const handleBarCodeScanned = async ({ data }: any) => {
+        try {
+            setShowScanner(false);
+            setScanned(true);
+            ToastAndroid.show("QR scanned", ToastAndroid.SHORT);
+            const parsed = parseQr(data);
+            console.log(parsed);
+            const res = await fetch(`${BASEURL}/save/secret`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    issuer: parsed?.issuer || "",
+                    account: parsed?.account || "",
+                    secret: parsed?.secret || ""
+                })
+            })
+            if (res.ok) {
+                ToastAndroid.show(`${parsed?.issuer} added successfully`, ToastAndroid.SHORT);
+                fetchAllSecrets();
+            }
+            else {
+                ToastAndroid.show(`Error adding ${parsed?.issuer}. Please check your internet connection`, ToastAndroid.SHORT)
+            }
+            const initialCode = generateSync({
+                secret: parsed?.secret || "",
+            });
+            const newEntry = {
+                id: Date.now().toString(),
+                secret: parsed?.secret,
+                issuer: parsed?.issuer,
+                account: parsed?.account,
+                code: initialCode
+            }
+            setOtpList((prev: any) => [...prev, newEntry]);
+        } catch (error) {
+            console.log(error);
+            console.error(error);
+        }
+
     }
 
     const saveToCloud = async (parsed: any) => {
@@ -92,7 +136,7 @@ const HomePage = () => {
         }
     }
 
-    const parseOTP = (data: string) => {
+    const parseQr = (data: string) => {
         try {
             const withoutPrefix = data.replace("otpauth://totp/", "");
             const [labelPart, queryPart] = withoutPrefix.split("?");
@@ -107,6 +151,7 @@ const HomePage = () => {
                 secret
             }
         } catch (error: any) {
+            ToastAndroid.show("Please scan a valid Qr Code", ToastAndroid.SHORT);
             console.log(error.stack);
         }
     }
@@ -141,28 +186,28 @@ const HomePage = () => {
                             <Text style={styles.addOptions}>Scan a QR Code</Text>
                             <Feather name="camera" size={20} />
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.addButtons} >
+                        {/* <TouchableOpacity style={styles.addButtons} >
                             <Text style={styles.addOptions}>Enter a setup key</Text>
                             <FontAwesome name="keyboard-o" size={20} />
-                        </TouchableOpacity>
+                        </TouchableOpacity> */}
                     </View>
                 </View>
             )}
             <ScrollView>
                 <View style={styles.container}>
-                    <View style={styles.search}>
+                    {/* <View style={styles.search}>
                         <Feather name="menu" size={25} />
                         <TextInput
 
                         />
-                    </View>
-                    {sampleData.length > 0 && sampleData.map((item) => (
+                    </View> */}
+                    {otpList.length > 0 && otpList.map((item) => (
                         <View key={item.id} style={styles.box}>
 
-                            <Text style={styles.nameText}>{item.name}</Text>
+                            <Text style={styles.nameText}>{item.account} {item?.issuer}</Text>
 
                             <View style={styles.rowBetween}>
-                                <Text style={styles.codeText}>{item.code}</Text>
+                                <Text style={styles.codeText}>{item?.code}</Text>
 
                                 <View style={styles.timer}>
                                     <Text style={{ fontSize: 12 }}>{timer}</Text>
@@ -183,127 +228,141 @@ const HomePage = () => {
 
 const styles = StyleSheet.create({
     container: {
-        paddingVertical: 40,
-        paddingHorizontal: 20
+        paddingVertical: 60, // Extra space for status bar
+        paddingHorizontal: 16,
+        backgroundColor: '#F8F9FA', // Light grey background for the whole app
+        minHeight: '100%',
     },
-    plusButton: {
-        position: 'absolute',
-        bottom: 30,
-        right: 20,
-        backgroundColor: '#222',
-        width: 60,
-        height: 60,
-        borderRadius: 30,   // circle
-        justifyContent: 'center',
+    // Search Bar
+    search: {
+        backgroundColor: '#FFF',
+        borderRadius: 12,
+        flexDirection: 'row',
         alignItems: 'center',
-        elevation: 5, // Android shadow
-        shadowColor: '#000', // iOS shadow
-        shadowOpacity: 0.3,
-        shadowOffset: { width: 0, height: 3 },
+        paddingHorizontal: 15,
+        paddingVertical: 12,
+        marginBottom: 10,
+        // Soft Shadow
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowOffset: { width: 0, height: 2 },
         shadowRadius: 4,
     },
-    overlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.4)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 10,
+    searchInput: {
+        flex: 1,
+        marginLeft: 10,
+        fontSize: 16,
+        color: '#333',
     },
-    addButtons: {
-        display: 'flex',
-        flexDirection: 'row',
-        columnGap: 8,
-        textAlign: 'center',
-        borderWidth: 1,
-        borderColor: 'black',
-        paddingHorizontal: 10,
-        paddingVertical: 8,
-        marginBottom: 10,
-        borderRadius: 10
-    },
-    popup: {
-        width: '80%',
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 20,
-        elevation: 10,
-        alignItems: 'center'
-    },
-    closeBtn: {
-        marginTop: 15,
-        backgroundColor: '#222',
-        padding: 10,
-        borderRadius: 8,
-        alignItems: 'center',
-    },
-    addOptions: {
-        fontSize: 18,
-        marginBottom: 10
-    },
-    closeAdd: {
-        display: 'flex',
-        alignSelf: 'flex-end',
-        borderColor: '#222',
-        borderWidth: 2
-    },
-    search: {
-        backgroundColor: '#ccc',
-        borderRadius: 5,
-        width: '100%',
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 8
-    },
+    // OTP Cards
     box: {
-        backgroundColor: '#ccc',
-        padding: 15,
-        borderRadius: 10,
-        marginTop: 15,
-    },
-    timer: {
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 8,
+        backgroundColor: '#FFF',
+        padding: 20,
+        borderRadius: 16,
+        marginTop: 12,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
     },
     nameText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 5,
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#757575', // Muted label color
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 4,
     },
-
     rowBetween: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
     codeText: {
-        fontSize: 18,
-        letterSpacing: 2,
-        fontWeight: '600',
+        fontSize: 32, // Large, readable code
+        letterSpacing: 4,
+        fontWeight: '700',
+        color: '#007AFF', // Professional Blue
+    },
+    timer: {
+        backgroundColor: '#E8F2FF',
+        width: 35,
+        height: 35,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#007AFF',
+    },
+    timerText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#007AFF',
+    },
+    // Floating Plus Button
+    plusButton: {
+        position: 'absolute',
+        bottom: 40,
+        right: 25,
+        backgroundColor: '#007AFF',
+        width: 65,
+        height: 65,
+        borderRadius: 33,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 8,
+        shadowColor: '#007AFF',
+        shadowOpacity: 0.4,
+        shadowOffset: { width: 0, height: 4 },
+        shadowRadius: 6,
+    },
+    // Overlays & Popups
+    overlay: {
+        position: 'absolute',
+        inset: 0,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'flex-end', // Slide up from bottom feel
+        zIndex: 10,
+    },
+    popup: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 25,
+        borderTopRightRadius: 25,
+        padding: 25,
+        paddingBottom: 50,
+        alignItems: 'center',
+    },
+    addButtons: {
+        width: '100%',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 18,
+        paddingHorizontal: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0',
+    },
+    addOptions: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#333',
+    },
+    closeAdd: {
+        marginBottom: 15,
+        alignSelf: 'center',
     },
     scannerOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 999,        // 👈 bring to front
-        elevation: 999,     // 👈 Android
+        flex: 1,
         backgroundColor: 'black',
+        zIndex: 1000,
     },
     closeScannerBtn: {
         position: 'absolute',
         top: 50,
         right: 20,
-        backgroundColor: '#000',
-        padding: 10,
-        borderRadius: 20
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        padding: 12,
+        borderRadius: 25,
     }
-})
+});
 
 export default HomePage;

@@ -1,9 +1,17 @@
+import { useEffect } from "react";
 import { View } from "react-native";
 
+
+
 const Profile = () => {
-    return(
+
+    useEffect(() => {
+        console.log("ProfilePage");
+    }, []);
+
+    return (
         <View>
-            
+
         </View>
     )
 }
