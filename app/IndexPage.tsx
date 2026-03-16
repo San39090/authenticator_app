@@ -1,6 +1,7 @@
 import { useRoute } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import * as SecureStore from 'expo-secure-store';
 import {
     View,
     Text,
@@ -12,16 +13,31 @@ import {
     ToastAndroid,
     TouchableWithoutFeedback,
     Keyboard,
-    Pressable
+    Pressable,
+    KeyboardAvoidingView,
+    Platform,
+    ActivityIndicator
 } from 'react-native';
+import Feather from "react-native-vector-icons/Feather";
 
 const IndexPage = () => {
     const route = useRouter();
-    const BASEURL = "https://authenticator-backend-h4al.onrender.com";
+    // const BASEURL = "https://authenticator-backend-h4al.onrender.com";
+    const BASEURL = "http://10.76.238.54:8080";
     const [name, setName] = useState("");
     const [password, setPassword] = useState("");
-    const [register,setRegister] = useState(false);
-    let toggle = false;
+    const [register, setRegister] = useState(false);
+    const [loading,setLoading] = useState(false);
+
+    useEffect(() => {
+        const check = async () => {
+            const id = await SecureStore.getItemAsync("UserId");
+            if (id != null) {
+                route.replace("/(tabs)/HomePage");
+            }
+        }
+        check();
+    }, []);
 
     const handleLogin = async () => {
         try {
@@ -36,10 +52,14 @@ const IndexPage = () => {
                 })
             });
             if (res.ok) {
+                const result = await res.json();
+                console.log(JSON.stringify(result));
+                await SecureStore.setItemAsync("UserId", String(result.userId));
+                await SecureStore.setItemAsync("Email", result.email);
                 ToastAndroid.show("Login Successful", ToastAndroid.SHORT);
                 route.replace("/(tabs)/HomePage");
             }
-            else{
+            else {
                 const result = await res.json();
                 ToastAndroid.show(result.message, ToastAndroid.SHORT);
             }
@@ -70,46 +90,83 @@ const IndexPage = () => {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            {/* Makes the status bar icons white */}
-            <StatusBar barStyle="light-content" backgroundColor="#121212" />
+       <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="light-content" />
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"} 
+                style={{ flex: 1 }}
+            >
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                    <View style={styles.content}>
+                        {/* Logo/Icon Section */}
+                        <View style={styles.logoContainer}>
+                            <View style={styles.iconCircle}>
+                                <Feather name="shield" size={50} color="#007AFF" />
+                            </View>
+                            <Text style={styles.title}>
+                                {register ? "Create Account" : "Secure Login"}
+                            </Text>
+                            <Text style={styles.subtitle}>
+                                {register ? "Start protecting your accounts" : "Enter your credentials to continue"}
+                            </Text>
+                        </View>
 
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss} >
-                <View style={styles.content}>
-                    <Text style={styles.title}>Welcome {register?"":"Back"}</Text>
-                    <Text style={styles.subtitle}>{register?"Register":"Login"} to access your 2FA codes</Text>
+                        {/* Input Section */}
+                        <View style={styles.form}>
+                            <View style={styles.inputWrapper}>
+                                <Feather name="mail" size={20} color="#666" style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.input}
+                                    value={name}
+                                    onChangeText={setName}
+                                    placeholder="Email Address"
+                                    placeholderTextColor="#666"
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                />
+                            </View>
 
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Email or Username</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={name}
-                            onChangeText={setName}
-                            placeholder="Enter your name"
-                            placeholderTextColor="#666"
-                        />
+                            <View style={styles.inputWrapper}>
+                                <Feather name="lock" size={20} color="#666" style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.input}
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    placeholder="Password"
+                                    placeholderTextColor="#666"
+                                    secureTextEntry
+                                />
+                            </View>
+
+                            <TouchableOpacity 
+                                style={[styles.button, loading && styles.buttonDisabled]} 
+                                onPress={handleLogin}
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <ActivityIndicator color="#FFF" />
+                                ) : (
+                                    <Text style={styles.buttonText}>
+                                        {register ? "Sign Up" : "Sign In"}
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={styles.toggleContainer}
+                                onPress={() => setRegister(!register)}
+                            >
+                                <Text style={styles.toggleText}>
+                                    {register ? "Already have an account? " : "Don't have an account? "}
+                                    <Text style={styles.toggleLink}>
+                                        {register ? "Log In" : "Register"}
+                                    </Text>
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Password</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={password}
-                            onChangeText={setPassword}
-                            placeholder="Enter password"
-                            placeholderTextColor="#666"
-                            secureTextEntry // Hides the password
-                        />
-                    </View>
-
-                    <TouchableOpacity style={styles.button} onPress={register?handleRegister:handleLogin} activeOpacity={0.8}>
-                        <Text style={styles.buttonText}>{register?"Register":"Login"}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={()=>{setRegister(toggle);toggle = !toggle}}>
-                        <Text style={[styles.subtitle,styles.register]}>{register?"Already have an account? Login here":"Register Here"}</Text>
-                    </TouchableOpacity>
-                </View>
-            </TouchableWithoutFeedback>
+                </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 };
@@ -117,64 +174,93 @@ const IndexPage = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#121212', // Dark background
+        backgroundColor: '#0F0F0F', // Deeper black
     },
     content: {
         flex: 1,
         paddingHorizontal: 30,
         justifyContent: 'center',
     },
-    title: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-        marginBottom: 8,
+    logoContainer: {
+        alignItems: 'center',
+        marginBottom: 50,
     },
-    register:{
-        textAlign:'center',
-        marginTop:20
-    },
-    subtitle: {
-        fontSize: 16,
-        color: '#AAAAAA',
-        marginBottom: 40,
-    },
-    inputContainer: {
+    iconCircle: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: '#1A1A1A',
+        justifyContent: 'center',
+        alignItems: 'center',
         marginBottom: 20,
-    },
-    label: {
-        color: '#BBBBBB',
-        marginBottom: 8,
-        fontSize: 14,
-    },
-    input: {
-        backgroundColor: '#1E1E1E',
-        color: '#FFFFFF',
-        borderRadius: 12,
-        paddingVertical: 15,
-        paddingHorizontal: 20,
-        fontSize: 16,
         borderWidth: 1,
         borderColor: '#333',
     },
-    button: {
-        backgroundColor: '#007AFF', // Professional Blue
-        borderRadius: 12,
-        paddingVertical: 18,
-        marginTop: 20,
+    title: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: '#FFFFFF',
+        textAlign: 'center',
+    },
+    subtitle: {
+        fontSize: 15,
+        color: '#888',
+        textAlign: 'center',
+        marginTop: 8,
+    },
+    form: {
+        width: '100%',
+    },
+    inputWrapper: {
+        flexDirection: 'row',
         alignItems: 'center',
-        // Shadow for iOS
+        backgroundColor: '#1A1A1A',
+        borderRadius: 15,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#333',
+        paddingHorizontal: 15,
+    },
+    inputIcon: {
+        marginRight: 10,
+    },
+    input: {
+        flex: 1,
+        color: '#FFFFFF',
+        paddingVertical: 18,
+        fontSize: 16,
+    },
+    button: {
+        backgroundColor: '#007AFF',
+        borderRadius: 15,
+        paddingVertical: 18,
+        marginTop: 10,
+        alignItems: 'center',
         shadowColor: '#007AFF',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
-        shadowRadius: 5,
-        // Elevation for Android
-        elevation: 5,
+        shadowRadius: 10,
+        elevation: 8,
+    },
+    buttonDisabled: {
+        backgroundColor: '#004499',
     },
     buttonText: {
         color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: '600',
+        fontSize: 17,
+        fontWeight: '700',
+    },
+    toggleContainer: {
+        marginTop: 25,
+        alignItems: 'center',
+    },
+    toggleText: {
+        color: '#888',
+        fontSize: 14,
+    },
+    toggleLink: {
+        color: '#007AFF',
+        fontWeight: 'bold',
     },
 });
 
