@@ -19,7 +19,7 @@ jobs:
 
       - name: Build Debug APK
         # We use the 'development' profile from your eas.json
-        run: npx eas-cli build --platform android --profile development --local
+        run: npx eas-cli@latest build -p android --profile development --local
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
