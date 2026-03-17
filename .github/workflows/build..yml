@@ -12,7 +12,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
 
       - name: Setup EAS
         run: npm install -g eas-cli
@@ -21,6 +21,6 @@ jobs:
         run: npm install
 
       - name: Build Locally on GitHub
-        run: eas-cli@latest build -p android --profile preview --local
+        run: npx eas-cli@latest build -p android --profile preview --local
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
