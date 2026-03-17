@@ -1,0 +1,26 @@
+name: Manual Android Build
+on:
+  workflow_dispatch: # Allows you to start the build manually
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Setup EAS
+        run: npm install -g eas-cli
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Locally on GitHub
+        run: eas build --platform android --profile preview --local
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
