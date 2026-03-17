@@ -11,7 +11,8 @@ const AddCode = () => {
     const [issuer, setIssuer] = useState("");
     const [code, setCode] = useState("");
     const [userEmail, setUserEmail] = useState("");
-    const BASEURL = "http://10.76.238.54:8080";
+    // const BASEURL = "http://10.76.238.54:8080";
+    const BASEURL = "https://authenticator-backend-h4al.onrender.com";
 
     useEffect(()=>{
         const getEmail = async() => {

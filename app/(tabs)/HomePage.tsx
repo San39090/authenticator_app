@@ -22,8 +22,8 @@ const HomePage = () => {
     const [showScanner, setShowScanner] = useState(false);
     const [hasPermission, setHasPermission] = useState(false);
     const [scanned, setScanned] = useState(false);
-    // const BASEURL = "https://authenticator-backend-h4al.onrender.com";
-    const BASEURL = "http://10.76.238.54:8080";
+    const BASEURL = "https://authenticator-backend-h4al.onrender.com";
+    // const BASEURL = "http://10.76.238.54:8080";
     const [timer, setTimer] = useState(30);
     const [otpList, setOtpList] = useState<OtpAccount[]>([]);
     const [userEmail, setUserEmail] = useState("");
@@ -188,10 +188,6 @@ const HomePage = () => {
             ToastAndroid.show("Please scan a valid Qr Code", ToastAndroid.SHORT);
             console.log(error.stack);
         }
-    }
-
-    const openForm = () => {
-        router.push("/AddCode");
     }
 
     return (
@@ -399,7 +395,11 @@ const styles = StyleSheet.create({
     addOptions: { flex: 1, fontSize: 16, fontWeight: '600', color: '#333' },
 
     // Scanner
-    scannerOverlay: { flex: 1, backgroundColor: '#000', zIndex: 1000 },
+    scannerOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: '#000', 
+        zIndex: 1000 
+    },
     scanFrame: {
         position: 'absolute',
         alignSelf: 'center',

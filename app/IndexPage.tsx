@@ -22,8 +22,8 @@ import Feather from "react-native-vector-icons/Feather";
 
 const IndexPage = () => {
     const route = useRouter();
-    // const BASEURL = "https://authenticator-backend-h4al.onrender.com";
-    const BASEURL = "http://10.76.238.54:8080";
+    const BASEURL = "https://authenticator-backend-h4al.onrender.com";
+    // const BASEURL = "http://10.76.238.54:8080";
     const [name, setName] = useState("");
     const [password, setPassword] = useState("");
     const [register, setRegister] = useState(false);
@@ -91,7 +91,7 @@ const IndexPage = () => {
 
     return (
        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="light-content" />
+            <StatusBar barStyle="default" />
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"} 
                 style={{ flex: 1 }}
