@@ -21,6 +21,6 @@ jobs:
         run: npm install
 
       - name: Build Locally on GitHub
-        run: eas build --platform android --profile preview --local
+        run: eas-cli@latest build -p android --profile preview --local
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
