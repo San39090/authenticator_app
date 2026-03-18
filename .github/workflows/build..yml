@@ -1,6 +1,6 @@
 name: Manual Android Build
 on:
-  workflow_dispatch: # Allows you to start the build manually
+  workflow_dispatch:
 
 jobs:
   build:
@@ -10,9 +10,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5 # Updated to v5
         with:
-          node-version: 20
+          node-version: 22 # Use Node 22 to avoid deprecation warnings
 
       - name: Setup EAS
         run: npm install -g eas-cli
@@ -24,3 +24,13 @@ jobs:
         run: npx eas-cli@latest build -p android --profile preview --local
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      # New Step: Upload the APK for download
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-preview-apk
+          # EAS local builds usually place the file in the root or a 'build' folder
+          # This wildcard finds any .apk file generated in the workspace
+          path: "**/*.apk"
+          retention-days: 7
